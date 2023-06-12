@@ -16,6 +16,7 @@ MODULE_DESCRIPTION("TEST UDB DRIVER");
 #define MAX_PKT_SIZE 65
 #define MIN(a,b) (((a) <= (b)) ? (a) : (b))
 
+//################################################### Print Interface and Endpoint descriptors #######################################################
 #define DUMP_INTERFACE_DESCRIPTORS(i) \
 {\
     printk("USB INTERFACE DESCRIPTOR:\n"); \
@@ -61,18 +62,19 @@ struct usb_class_driver usb_cd;
 struct usb_host_interface *iface_desc;
 struct usb_endpoint_descriptor *endpoint;
 
-
+//#############################################################################  OPEN  #######################################################
 static int usbtest_open(struct inode *i, struct file *f)
 {
     return 0;
 }
 
+//#############################################################################  CLOSE  #######################################################
 static int usbtest_close(struct inode *i, struct file *f)
 {
     return 0;
 }
 
- 
+//#############################################################################  READ  ####################################################### 
 static ssize_t usbtest_read(struct file *f, char __user *buf, size_t count, loff_t *off)
 {
     printk("Reading from Driver\n");
@@ -135,7 +137,7 @@ static ssize_t usbtest_read(struct file *f, char __user *buf, size_t count, loff
     return toCopy;
 }
  
-
+//#############################################################################  WRITE  #######################################################
 static ssize_t usbtest_write(struct file *f, const char __user *buf, size_t count, loff_t *ppos)
 {
     printk("Writing in Driver\n");
@@ -171,6 +173,7 @@ static ssize_t usbtest_write(struct file *f, const char __user *buf, size_t coun
     return count;
 }
 
+//#############################################################################  FILE STRUCTURE  #######################################################
 static struct file_operations fops =
 {
     .owner      = THIS_MODULE,
@@ -181,7 +184,7 @@ static struct file_operations fops =
 };
 
 
-
+//#############################################################################  PROBE  ####################################################################
 static int my_usb_probe(struct usb_interface *intf, const struct usb_device_id *id)
 {
     printk("my_usb_devdrv - Probe Function\n");
@@ -227,13 +230,14 @@ static int my_usb_probe(struct usb_interface *intf, const struct usb_device_id *
     return 0;
 }
 
+//#############################################################################  DISCONNECT  #######################################################
 static void my_usb_disconnect(struct usb_interface *init)
 {
     printk("my_usb_devdrv - Disconnect Function\n");
     usb_deregister_dev(init, &usb_cd);
 }
 
-
+//#############################################################################  HID_DRIVER_STRUCTURE  #######################################################
 static struct usb_driver usb_hid_driver = {
     //.owner  = THIS_MODULE,
     .name = "hid_stm32_usb",
@@ -243,7 +247,7 @@ static struct usb_driver usb_hid_driver = {
 };
 
 
-
+//#############################################################################  INIT  #######################################################
 static int __init my_usb_init(void)
 {
     printk(KERN_ALERT "Hello, world and register function\n");
@@ -257,6 +261,7 @@ static int __init my_usb_init(void)
    return 0;
 }
 
+//#############################################################################  EXIT  #######################################################
 static void  __exit exitDriver(void)
 {
    printk(KERN_ALERT "Goodbye, cruel world and deregister function\n");
@@ -267,5 +272,6 @@ static void  __exit exitDriver(void)
    usb_deregister(&usb_hid_driver);
 }
 
+//#############################################################################  REGISTRATION FUNCTIONS  #######################################################
 module_init(my_usb_init);
 module_exit(exitDriver);

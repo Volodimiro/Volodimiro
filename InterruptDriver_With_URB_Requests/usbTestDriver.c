@@ -18,6 +18,7 @@ MODULE_DESCRIPTION("TEST UDB DRIVER");
 #define ENDPOINT_IN_ADDRESS 0x81
 #define MIN(a,b) (((a) <= (b)) ? (a) : (b))
 
+//################################################### Print Interface and Endpoint descriptors #######################################################
 #define DUMP_INTERFACE_DESCRIPTORS(i) \
 {\
     printk("USB INTERFACE DESCRIPTOR:\n"); \
@@ -275,7 +276,6 @@ static struct file_operations fops =
 };
 
 //#############################################################################  PROBE  ####################################################################
-
 static int my_usb_probe(struct usb_interface *intf, const struct usb_device_id *id)
 {
     printk("my_usb_devdrv - Probe Function\n");
@@ -412,10 +412,6 @@ static int __init my_usb_init(void)
 static void  __exit exitDriver(void)
 {
    printk(KERN_ALERT "Goodbye, cruel world and deregister function\n");
-   //kfree(commandBuffer);
-  // kfree(bufferRead);
-  // commandBuffer = NULL;
-   //bufferRead = NULL;
    usb_deregister(&usb_hid_driver);
 }
 

@@ -64,21 +64,21 @@ struct usb_class_driver usb_cd;
 
 
 //#############################################################################  OUR DRIVER DESCRIPTION STRUCTURE  #######################################################
-struct usb_iterrupt_driver_t
+struct usb_bulk_driver_t
 {
     struct usb_device *usb_dev;           
     struct usb_interface *intf;
     char *commandBuffer; //= NULL; //Buffer for send of commands 
     char *bufferRead; //= NULL;    //Buffer for receive of commands
-    struct usb_endpoint_descriptor *interrupt_in_endpoint;
-    struct usb_endpoint_descriptor *interrupt_out_endpoint; 
-    int interrupt_endpoint_IN_address;
-    int interrupt_endpoint_OUT_address;
-    int interrupt_Interval_In;
-    int interrupt_Interval_Out;
-    int usb_interrupt_in_size;
+    struct usb_endpoint_descriptor *bulk_in_endpoint;
+    struct usb_endpoint_descriptor *bulk_out_endpoint; 
+    int bulk_endpoint_IN_address;
+    int bulk_endpoint_OUT_address;
+    int bulk_Interval_In;
+    int bulk_Interval_Out;
+    int usb_bulk_in_size;
     struct urb *urb;
-    int usb_interrupt_out_size; 
+    int usb_bulk_out_size; 
     struct usb_host_interface *iface_desc; 
     int open_count;
 };
@@ -105,18 +105,18 @@ static int usbtest_close(struct inode *i, struct file *f)
 }
 
 //#############################################################################  CALLBACK  #######################################################
-static void urb_read_int_callback(struct urb *urb)
+static void urb_read_bulk_callback(struct urb *urb)
 {
   complete((struct completion *)urb->context);
  
-  printk(KERN_INFO "urb_read_int_callback");
+  printk(KERN_INFO "urb_read_bulk_callback");
 }
 
-static void urb_write_int_callback(struct urb *urb)
+static void urb_write_bulk_callback(struct urb *urb)
 {
-   struct usb_iterrupt_driver_t *dev = NULL;
-   dev = (struct usb_iterrupt_driver_t*)urb->context;
-   printk(KERN_INFO "urb_write_int_callback" );
+   struct usb_bulk_driver_t *dev = NULL;
+   dev = (struct usb_bulk_driver_t*)urb->context;
+   printk(KERN_INFO "urb_write_bulk_callback" );
 }
 
 //#############################################################################  READ  #######################################################
@@ -125,12 +125,12 @@ static ssize_t usbtest_read(struct file *f, char __user *buf, size_t count, loff
     printk("Reading from Driver\n");
    
     int status, size, toCopy, sizeNotCopiedData;
-    struct usb_iterrupt_driver_t *dev = NULL;
+    struct usb_bulk_driver_t *dev = NULL;
     struct urb *urb = NULL;
     struct completion dev_config_done;
     void *dev_ctrl_context;
 
-    dev = (struct usb_iterrupt_driver_t*)f->private_data; //Gets our driver structure from file structure which was safed \
+    dev = (struct usb_bulk_driver_t*)f->private_data; //Gets our driver structure from file structure which was safed \
                                                            in usbtest_open() metods 
    
    
@@ -154,12 +154,12 @@ static ssize_t usbtest_read(struct file *f, char __user *buf, size_t count, loff
     init_completion(&dev_config_done);
     dev_ctrl_context = (void*)&dev_config_done;
 
-    usb_fill_int_urb(urb, dev->usb_dev, usb_rcvintpipe(dev->usb_dev, 0x81),dev->bufferRead,\
-    dev->usb_interrupt_in_size, urb_read_int_callback, dev_ctrl_context, dev->interrupt_Interval_In); //filling urb structure
+    usb_fill_bulk_urb(urb, dev->usb_dev, usb_rcvbulkpipe(dev->usb_dev, 0x81),dev->bufferRead,\
+    dev->usb_bulk_in_size, urb_read_bulk_callback, dev_ctrl_context); //filling urb structure
         
-    printk(KERN_ERR "< Reading function > dev->interrupt_endpoint_IN_address 0x%x", dev->interrupt_endpoint_IN_address );
+    printk(KERN_ERR "< Reading function > dev->bulk_endpoint_IN_address 0x%x", dev->bulk_endpoint_IN_address );
     
-    memset(dev->bufferRead, 0, dev->usb_interrupt_out_size + 1); //clearing the buffer
+    memset(dev->bufferRead, 0, dev->usb_bulk_out_size + 1); //clearing the buffer
 
     status = usb_submit_urb(urb, GFP_KERNEL); // Send urb requests to the kernel
     
@@ -168,11 +168,11 @@ static ssize_t usbtest_read(struct file *f, char __user *buf, size_t count, loff
     usb_free_urb(urb); //free urb
 
         
-    printk(KERN_ERR "status = urb_interrupt_rcv(): %d\n", status);
+    printk(KERN_ERR "status = urb_bulk_rcv(): %d\n", status);
     
     if(status)
     {
-        printk(KERN_ERR "Not reciave messages by usb_interrupt_msg");
+        printk(KERN_ERR "Not reciave messages by usb_bulk_msg");
        
         return status;
     }
@@ -191,7 +191,7 @@ static ssize_t usbtest_read(struct file *f, char __user *buf, size_t count, loff
     if(sizeNotCopiedData > 0)
     {
         printk(KERN_ERR "copy_to_user Not copyed %d bytes:", sizeNotCopiedData);
-        toCopy = dev->usb_interrupt_out_size - sizeNotCopiedData;
+        toCopy = dev->usb_bulk_out_size - sizeNotCopiedData;
     } 
   
     printk(KERN_INFO "copy_to_user success:");
@@ -206,10 +206,10 @@ static ssize_t usbtest_write(struct file *f, const char __user *buf, size_t coun
     
     int status;
     int _count = MIN(count, MAX_PKT_SIZE);
-    struct usb_iterrupt_driver_t *dev = NULL;
+    struct usb_bulk_driver_t *dev = NULL;
     struct urb *urb = NULL;
 
-    dev = (struct usb_iterrupt_driver_t*)f->private_data;//Gets our driver  structure from file structure which was safed \
+    dev = (struct usb_bulk_driver_t*)f->private_data;//Gets our driver  structure from file structure which was safed \
                                                            in usbtest_open() metods 
     
     urb = usb_alloc_urb(0, GFP_KERNEL);   //Allocating kernel memory for urb structure 
@@ -240,10 +240,10 @@ static ssize_t usbtest_write(struct file *f, const char __user *buf, size_t coun
     
     printk("< Writing function > Writing in Driver command %c \n", *dev->commandBuffer);
     printk("< Writing function > Writing in Driver _count %d \n", _count);
-    printk("< Writing function > dev->interrupt_endpoint_IN_address 0x%x \n", dev->interrupt_endpoint_OUT_address);
+    printk("< Writing function > dev->bulk_endpoint_IN_address 0x%x \n", dev->bulk_endpoint_OUT_address);
   
-    usb_fill_int_urb(urb, dev->usb_dev, usb_sndintpipe(dev->usb_dev, dev->interrupt_endpoint_OUT_address), dev->commandBuffer, _count, \
-    urb_write_int_callback, dev, dev->interrupt_Interval_Out);  //filling the urb structure
+    usb_fill_bulk_urb(urb, dev->usb_dev, usb_sndbulkpipe(dev->usb_dev, dev->bulk_endpoint_OUT_address), dev->commandBuffer, _count, \
+    urb_write_bulk_callback, dev);  //filling the urb structure
    
     printk(KERN_ERR "< Writing function >  urb->number_of_packets %d", urb->number_of_packets ); 
     printk("< Writing function > 1\n", _count);
@@ -257,7 +257,7 @@ static ssize_t usbtest_write(struct file *f, const char __user *buf, size_t coun
    
     if(status)
     {
-      printk(KERN_ERR "< Writing function > Not send messages by usb_interrupt_msg! Stasus: %d", status);
+      printk(KERN_ERR "< Writing function > Not send messages by usb_bulk_msg! Stasus: %d", status);
       return status;
     }
    
@@ -280,7 +280,7 @@ static int my_usb_probe(struct usb_interface *intf, const struct usb_device_id *
 {
     printk("my_usb_devdrv - Probe Function\n");
     //int _ret;
-    struct usb_iterrupt_driver_t *dev;
+    struct usb_bulk_driver_t *dev;
     struct usb_endpoint_descriptor *endpoint;
     int retval = -ENOMEM; 
    
@@ -292,17 +292,17 @@ static int my_usb_probe(struct usb_interface *intf, const struct usb_device_id *
    
 //******************************************************** Initialization our structure dev
  
-  dev = kzalloc(sizeof(struct usb_iterrupt_driver_t), GFP_KERNEL); //Allocation kernel memory for our driver description structure
+  dev = kzalloc(sizeof(struct usb_bulk_driver_t), GFP_KERNEL); //Allocation kernel memory for our driver description structure
   
-  //dev->interrupt_endpoint_IN_address = ENDPOINT_IN_ADDRESS;
-  //dev->interrupt_endpoint_OUT_address = ENDPOINT_OUT_ADDRESS;
+  //dev->bulk_endpoint_IN_address = ENDPOINT_IN_ADDRESS;
+  //dev->bulk_endpoint_OUT_address = ENDPOINT_OUT_ADDRESS;
   dev->intf = intf;
   dev->usb_dev = interface_to_usbdev(intf);
   dev->iface_desc = intf->cur_altsetting;
-  dev->interrupt_Interval_In = 100;
-  dev->interrupt_Interval_Out = 100;
-  dev->usb_interrupt_out_size = 65;
-  dev->usb_interrupt_in_size = 65;
+  dev->bulk_Interval_In = 100;
+  dev->bulk_Interval_Out = 100;
+  dev->usb_bulk_out_size = 65;
+  dev->usb_bulk_in_size = 65;
   dev->urb = usb_alloc_urb(0, GFP_KERNEL);
   dev->bufferRead = kzalloc(MAX_PKT_SIZE, GFP_KERNEL);
   dev->commandBuffer = kzalloc(MAX_PKT_SIZE, GFP_KERNEL);
@@ -315,23 +315,23 @@ static int my_usb_probe(struct usb_interface *intf, const struct usb_device_id *
   {
     DUMP_USB_ENDPOINT_DESCRIPTOR(dev->iface_desc->endpoint[i].desc);
     endpoint = &dev->iface_desc->endpoint[i].desc;
-    if(usb_endpoint_is_int_in(endpoint)) //If enpoind is IN
+    if(usb_endpoint_is_bulk_in(endpoint)) //If enpoind is IN
     {
-      dev->usb_interrupt_in_size  = endpoint->wMaxPacketSize;
-      dev->interrupt_endpoint_IN_address = endpoint->bEndpointAddress;
+      dev->usb_bulk_in_size  = endpoint->wMaxPacketSize;
+      dev->bulk_endpoint_IN_address = endpoint->bEndpointAddress;
       printk(KERN_INFO "USB_DIR_IN: 0x%x\n", endpoint->bEndpointAddress);
       printk(KERN_INFO "IN: endpoint->wMaxPacketSize %d\n\n", endpoint->wMaxPacketSize);
     }
-    if(usb_endpoint_is_int_out(endpoint)) //If ebdpoint is out
+    if(usb_endpoint_is_bulk_out(endpoint)) //If ebdpoint is out
     {
-       dev->usb_interrupt_out_size = endpoint->wMaxPacketSize;
-       dev->interrupt_endpoint_OUT_address =  endpoint->bEndpointAddress;
+       dev->usb_bulk_out_size = endpoint->wMaxPacketSize;
+       dev->bulk_endpoint_OUT_address =  endpoint->bEndpointAddress;
        printk(KERN_INFO "USB_DIR_OUT 0x%x\n", endpoint->bEndpointAddress);
        printk(KERN_INFO "OUT: endpoint->wMaxPacketSize %d\n\n", endpoint->wMaxPacketSize);
     }
   }
   
-  if(!(dev->interrupt_endpoint_IN_address && dev->interrupt_endpoint_OUT_address))
+  if(!(dev->bulk_endpoint_IN_address && dev->bulk_endpoint_OUT_address))
   {
     printk(KERN_ERR "Cannot get endpoint address.");
     goto error; 
@@ -370,7 +370,7 @@ static int my_usb_probe(struct usb_interface *intf, const struct usb_device_id *
 //#############################################################################  DISCONNECT  #######################################################
 static void my_usb_disconnect(struct usb_interface *intf)
 {
-    struct usb_iterrupt_driver_t *dev;
+    struct usb_bulk_driver_t *dev;
     dev = usb_get_intfdata(intf); //Get device interface what has saving in the probe function by   usb_set_intfdata(intf, dev); 
     usb_set_intfdata(intf, NULL);
     kfree(dev->bufferRead);

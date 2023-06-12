@@ -97,7 +97,7 @@ static ssize_t usbtest_read(struct file *f, char __user *buf, size_t count, loff
     
     memset(bufferRead, 0, MAX_PKT_SIZE);
                
-    status = usb_interrupt_msg(usb_dev, usb_rcvintpipe(usb_dev, 0x81), bufferRead, MAX_PKT_SIZE, &size, HZ*100);
+    status = usb_bulk_msg(usb_dev, usb_rcvbulkpipe(usb_dev, 0x81), bufferRead, MAX_PKT_SIZE, &size, HZ*100);
     
     printk(KERN_ERR "status: %d\n", status);
         
@@ -164,7 +164,7 @@ static ssize_t usbtest_write(struct file *f, const char __user *buf, size_t coun
     
     printk("Writing in Driver command %c \n", *commandBuffer);
     printk("Writing in Driver _count %d \n", _count);
-    status = usb_interrupt_msg(usb_dev, usb_sndintpipe(usb_dev, 0x01), commandBuffer,  MIN(count, MAX_PKT_SIZE), &_count, HZ*100);
+    status = usb_bulk_msg(usb_dev, usb_sndbulkpipe(usb_dev, 0x01), commandBuffer,  MIN(count, MAX_PKT_SIZE), &_count, HZ*100);
     if(status)
     {
         printk(KERN_ERR "Not send messages by usb_interrupt_msg");
